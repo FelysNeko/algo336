@@ -30,12 +30,10 @@ impl Language {
             }
 
             let mut boundaries = Vec::with_capacity(symbols.len() * 2 + 2);
-            boundaries.push(u32::MIN);
             for (start, end) in symbols {
                 boundaries.push(start);
                 boundaries.push(end.saturating_add(1));
             }
-            boundaries.push(u32::MAX);
             boundaries.sort();
             boundaries.dedup();
 
