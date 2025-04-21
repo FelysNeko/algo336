@@ -1,14 +1,15 @@
 use crate::ast::{Language, Terminal};
 use std::collections::{HashMap, HashSet};
 
-type Graph<V, E> = HashMap<V, HashSet<E>>;
+type Graph = HashMap<usize, HashSet<usize>>;
+type Transition = HashMap<(usize, (u32, u32)), usize>;
 
 impl Language {
     pub fn annotated(self) -> Self {
         Language::Concat(self.into(), Language::Terminal(Terminal::Pound, 0).into())
     }
 
-    pub fn build(&mut self) -> (HashMap<(usize, Terminal), usize>, Vec<bool>) {
+    pub fn build(&mut self) -> (Transition, Vec<bool>) {
         let terminals = self.label();
         let follows = self.follow();
         let pound = terminals.len() - 1;
@@ -18,27 +19,54 @@ impl Language {
 
         let mut unmarked = vec![0];
         while let Some(s) = unmarked.pop() {
-            let mut matchers = Graph::new();
+            let mut symbols = Vec::new();
             for i in &states[s] {
-                if *i == pound {
-                    continue;
+                match &terminals[*i] {
+                    Terminal::Set(set) => {
+                        symbols.extend(set);
+                    }
+                    Terminal::Pound => continue,
                 }
-                let terminal = terminals[*i].clone();
-                matchers.entry(terminal).or_default().insert(*i);
             }
-            for (input, positions) in matchers {
+
+            let mut boundaries = Vec::with_capacity(symbols.len() * 2 + 2);
+            boundaries.push(u32::MIN);
+            for (start, end) in symbols {
+                boundaries.push(start);
+                boundaries.push(end.saturating_add(1));
+            }
+            boundaries.push(u32::MAX);
+            boundaries.sort();
+            boundaries.dedup();
+
+            let ranges = boundaries
+                .windows(2)
+                .map(|x| (x[0], x[1].saturating_sub(1)))
+                .collect::<Vec<_>>();
+
+            for range in ranges {
                 let mut next = HashSet::new();
-                for i in positions {
-                    next.extend(follows.get(&i).unwrap());
+                for &i in &states[s] {
+                    match &terminals[i] {
+                        Terminal::Set(set) => {
+                            if set
+                                .iter()
+                                .any(|&(start, end)| start <= range.0 && range.1 <= end)
+                            {
+                                next.extend(follows.get(&i).unwrap_or(&HashSet::new()));
+                            }
+                        }
+                        Terminal::Pound => continue,
+                    }
                 }
 
                 if let Some(id) = states.iter().position(|x| x == &next) {
-                    transition.insert((s, input), id);
+                    transition.insert((s, range), id);
                 } else {
                     let id = states.len();
                     states.push(next);
                     unmarked.push(id);
-                    transition.insert((s, input), id);
+                    transition.insert((s, range), id);
                 }
             }
         }
@@ -117,7 +145,7 @@ impl Language {
         }
     }
 
-    fn follow(&self) -> Graph<usize, usize> {
+    fn follow(&self) -> Graph {
         let mut follows = Graph::new();
         let mut todo = vec![self];
         while let Some(language) = todo.pop() {

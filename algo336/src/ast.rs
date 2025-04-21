@@ -9,6 +9,6 @@ pub enum Language {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Terminal {
-    Set(Vec<(char, char)>),
+    Set(Vec<(u32, u32)>),
     Pound,
 }
