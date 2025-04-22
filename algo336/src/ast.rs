@@ -6,7 +6,7 @@ pub enum Language {
     Terminal(Terminal, usize),
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone)]
 pub enum Terminal {
     Set(Vec<(u32, u32)>),
     Pound,

@@ -41,16 +41,13 @@ impl Language {
             boundaries.sort();
             boundaries.dedup();
 
-            let ranges = boundaries
+            let mut ranges = boundaries
                 .windows(2)
-                .map(|x| {
-                    if saturated && x[1] == u32::MAX {
-                        (x[0], u32::MAX)
-                    } else {
-                        (x[0], x[1].saturating_sub(1))
-                    }
-                })
+                .map(|x| (x[0], x[1].saturating_sub(1)))
                 .collect::<Vec<_>>();
+            if saturated {
+                ranges.last_mut().unwrap().1 = u32::MAX;
+            }
 
             for range in ranges {
                 let mut next = HashSet::new();
