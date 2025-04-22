@@ -29,8 +29,12 @@ impl Language {
                 }
             }
 
+            let mut saturated = false;
             let mut boundaries = Vec::with_capacity(symbols.len() * 2 + 2);
             for (start, end) in symbols {
+                if end == u32::MAX {
+                    saturated = true;
+                }
                 boundaries.push(start);
                 boundaries.push(end.saturating_add(1));
             }
@@ -39,7 +43,13 @@ impl Language {
 
             let ranges = boundaries
                 .windows(2)
-                .map(|x| (x[0], x[1].saturating_sub(1)))
+                .map(|x| {
+                    if saturated && x[1] == u32::MAX {
+                        (x[0], u32::MAX)
+                    } else {
+                        (x[0], x[1].saturating_sub(1))
+                    }
+                })
                 .collect::<Vec<_>>();
 
             for range in ranges {
