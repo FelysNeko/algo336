@@ -30,24 +30,33 @@ impl Language {
             }
 
             let mut saturated = false;
-            let mut boundaries = Vec::with_capacity(symbols.len() * 2 + 2);
-            for (start, end) in symbols {
+            let mut boundaries = Vec::with_capacity(symbols.len() * 2);
+            for &(start, end) in &symbols {
                 if end == u32::MAX {
                     saturated = true;
                 }
                 boundaries.push(start);
                 boundaries.push(end.saturating_add(1));
             }
-            boundaries.sort();
+            boundaries.sort_unstable();
             boundaries.dedup();
 
-            let mut ranges = boundaries
+            let mut atomic = boundaries
                 .windows(2)
                 .map(|x| (x[0], x[1].saturating_sub(1)))
                 .collect::<Vec<_>>();
             if saturated {
-                ranges.last_mut().unwrap().1 = u32::MAX;
+                atomic.last_mut().unwrap().1 = u32::MAX;
             }
+
+            let ranges = atomic
+                .into_iter()
+                .filter(|x| {
+                    symbols
+                        .iter()
+                        .any(|&(start, end)| start <= x.0 && x.1 <= end)
+                })
+                .collect::<Vec<_>>();
 
             for range in ranges {
                 let mut next = HashSet::new();
